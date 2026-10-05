@@ -3,6 +3,7 @@ import Icone from '../components/Icone.jsx';
 import { Termometro } from '../components/Comuns.jsx';
 import ScriptBox from '../components/ScriptBox.jsx';
 import Registrar from '../components/Registrar.jsx';
+import { GravarLigacao } from '../components/Gravacoes.jsx';
 import { useFaro } from '../Contexto.jsx';
 import { formatarTelefone, linkLigar, linkWhatsApp, nomeEstagio, quando } from '../lib/util.js';
 
@@ -81,6 +82,7 @@ export default function Foco({ fila: filaInicial, aoSair }) {
             {lead.instagram && <a className="btn gd" href={`https://instagram.com/${lead.instagram}`} target="_blank" rel="noopener noreferrer"><Icone nome="insta" /></a>}
             {lead.maps_url && <a className="btn gd" href={lead.maps_url} target="_blank" rel="noopener noreferrer" aria-label="Abrir no Maps"><Icone nome="pino" /></a>}
           </div>
+          <GravarLigacao lead={lead} compacto />
           <div className="bloco">
             <div className="bloco-cab"><h3>Por que agora</h3><button className="btn pq fantasma" onClick={() => abrirLead({ id: lead.id })}>Ficha completa</button></div>
             <div className="bloco-corpo porque">

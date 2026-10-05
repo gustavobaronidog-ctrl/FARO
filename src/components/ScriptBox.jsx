@@ -12,12 +12,29 @@ const CANAIS = [
   { chave: 'objecao', nome: 'Objeções' },
 ];
 
+// "[S · SITUAÇÃO — dica]" vira o cabeçalho de uma etapa do SPIN
+const ETAPA = /^\s*\[(S|P|I|N|APRESENTAÇÃO|FECHAMENTO)\s*(?:·\s*([^\]—]+?))?\s*(?:—\s*([^\]]+))?\]\s*$/;
+export const ETAPAS_SPIN = { S: 'Situação', P: 'Problema', I: 'Implicação', N: 'Necessidade' };
+
 export function TextoScript({ texto }) {
   return (
     <div className="script-texto">
       {texto.split('\n').map((l, i) => {
+        const e = l.match(ETAPA);
+        if (e) {
+          const letra = e[1].length === 1 ? e[1] : null;
+          return (
+            <div key={i} className={`etapa-spin ${letra ? `spin-${letra.toLowerCase()}` : 'spin-fim'}`}>
+              {letra && <span className="etapa-letra">{letra}</span>}
+              <span className="etapa-nome">{letra ? ETAPAS_SPIN[letra] : e[1].charAt(0) + e[1].slice(1).toLowerCase()}</span>
+              {e[3] && <span className="etapa-dica">{e[3]}</span>}
+            </div>
+          );
+        }
         const marca = /^\s*(\[.*\]|→.*)\s*$/.test(l);
-        return <div key={i} className={marca ? 'marcacao' : undefined}>{l || ' '}</div>;
+        const dica = !marca && l.match(/^\s*(\[[^\]]+\])\s*(.+)$/); // "[se estiver gravando] Só te aviso…"
+        if (dica) return <div key={i}><span className="marcacao">{dica[1]}</span> {dica[2]}</div>;
+        return <div key={i} className={marca ? 'marcacao' : undefined}>{l || '\u00a0'}</div>;
       })}
     </div>
   );
@@ -68,7 +85,7 @@ export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicia
           <div className="script-escolha">
             {opcoes.map(s => (
               <button key={s.id} aria-pressed={s.id === atual?.id} onClick={() => setEscolhido(s.id)} title={s.usos ? `${s.usos} usos, ${taxaScript(s)}% positivos` : 'Ainda sem uso'}>
-                {canal === 'objecao' ? s.gatilho || s.titulo : s.titulo.replace(/^[^·]*·\s*/, '')}
+                {canal === 'objecao' ? s.gatilho || s.titulo : s.titulo.replace(/^(?!SPIN)[^·]*·\s*/, '')}
                 {melhor?.id === s.id ? ' (o que mais converte)' : ''}
               </button>
             ))}

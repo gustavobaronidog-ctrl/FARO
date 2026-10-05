@@ -9,6 +9,7 @@ import Funil from './pages/Funil.jsx';
 import Scripts from './pages/Scripts.jsx';
 import Cacada from './pages/Cacada.jsx';
 import Aprendizado from './pages/Aprendizado.jsx';
+import Treino from './pages/Treino.jsx';
 import Ajustes from './pages/Ajustes.jsx';
 import { configurado } from './lib/supabase.js';
 import * as dados from './lib/dados.js';
@@ -18,6 +19,7 @@ const PAGINAS = [
   { rota: 'radar', nome: 'Radar', icone: 'radar', C: Radar },
   { rota: 'funil', nome: 'Funil', icone: 'funil', C: Funil },
   { rota: 'scripts', nome: 'Scripts', icone: 'scripts', C: Scripts },
+  { rota: 'treino', nome: 'Treino', icone: 'treino', C: Treino },
   { rota: 'cacada', nome: 'Caçada', icone: 'cacada', C: Cacada },
   { rota: 'aprendizado', nome: 'Aprendizado', icone: 'aprendizado', C: Aprendizado },
   { rota: 'ajustes', nome: 'Ajustes', icone: 'ajustes', C: Ajustes },
@@ -75,10 +77,10 @@ function Casca() {
       </nav>
       <main className="conteudo"><Pagina /></main>
       <nav className="barra-baixo" aria-label="Menu">
-        {PAGINAS.filter(p => p.rota !== 'ajustes' && p.rota !== 'aprendizado').map(p => (
+        {PAGINAS.filter(p => !['ajustes', 'aprendizado', 'cacada'].includes(p.rota)).map(p => (
           <a key={p.rota} href={`#/${p.rota}`} aria-current={p.rota === pagina.rota ? 'page' : undefined}><Icone nome={p.icone} tam={20} />{p.nome}</a>
         ))}
-        <a href="#/ajustes" aria-current={pagina.rota === 'ajustes' ? 'page' : undefined}><Icone nome="ajustes" tam={20} />Mais</a>
+        <a href="#/ajustes" aria-current={['ajustes', 'aprendizado', 'cacada'].includes(pagina.rota) ? 'page' : undefined}><Icone nome="ajustes" tam={20} />Mais</a>
       </nav>
       <LeadPainel />
     </div>

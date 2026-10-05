@@ -295,6 +295,71 @@ async function auth(req, url, corpo) {
   throw erro(404, 'not_found', 'rota de auth não simulada: ' + rota);
 }
 
+// ------------------------------------------------------------------ /storage/v1 (arquivos, com as regras de storage.objects)
+const arquivos = new Map(); // "balde/caminho" -> { bytes, tipo }
+export const arquivosGuardados = arquivos;
+async function armazenamento(req, res, url, cors) {
+  const enviar = (status, corpo, cab = {}) => { res.writeHead(status, { 'content-type': 'application/json', ...cors, ...cab }); res.end(typeof corpo === 'string' || Buffer.isBuffer(corpo) ? corpo : JSON.stringify(corpo)); };
+  try {
+    const partes = []; for await (const p of req) partes.push(p);
+    const bruto = Buffer.concat(partes);
+    const caminho = decodeURIComponent(url.pathname.replace(/^\/storage\/v1\//, ''));
+    // URL assinada: só confere o token
+    if (req.method === 'GET' && caminho.startsWith('object/sign/')) {
+      const chaveArq = caminho.slice('object/sign/'.length);
+      if (url.searchParams.get('token') !== Buffer.from(chaveArq).toString('base64url')) return enviar(400, { message: 'token inválido' });
+      const a = arquivos.get(chaveArq); if (!a) return enviar(404, { message: 'Object not found' });
+      return enviar(200, a.bytes, { 'content-type': a.tipo });
+    }
+    const chave = req.headers['apikey'];
+    if (chave !== CHAVE_PUBLICA && chave !== CHAVE_SECRETA) return enviar(401, { message: 'Invalid API key' });
+    let papel = chave === CHAVE_SECRETA ? 'service_role' : 'anon', claims = { role: papel };
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (bearer && bearer !== chave) { const c = verificar(bearer); if (!c) return enviar(401, { message: 'JWT inválido' }); papel = c.role; claims = c; }
+    const comoPapel = (q) => rodar(papel, claims, q);
+    const m = caminho.match(/^object\/(?:(sign|authenticated)\/)?([^/]+)\/?(.*)$/);
+    if (!m) return enviar(404, { message: 'rota' });
+    const [, modo, balde, nome] = m;
+    const chaveArq = `${balde}/${nome}`;
+    const visivel = async () => (await comoPapel(`select count(*) from storage.objects where bucket_id = ${lit(balde)} and name = ${lit(nome)}`)) === '1';
+    if (req.method === 'POST' && modo === 'sign') {
+      if (!(await visivel())) return enviar(400, { statusCode: '404', error: 'not_found', message: 'Object not found' });
+      return enviar(200, { signedURL: `/object/sign/${chaveArq}?token=${Buffer.from(chaveArq).toString('base64url')}` });
+    }
+    if (req.method === 'POST' || req.method === 'PUT') {
+      let bytes = bruto, tipo = req.headers['content-type'] || 'application/octet-stream';
+      if (tipo.startsWith('multipart/form-data')) {
+        const form = await new Response(bruto, { headers: { 'content-type': tipo } }).formData();
+        const arq = [...form.values()].find(v => typeof v === 'object');
+        bytes = Buffer.from(await arq.arrayBuffer()); tipo = arq.type || 'application/octet-stream';
+      }
+      const [b] = JSON.parse(await rodar('service_role', { role: 'service_role' }, `select coalesce(json_agg(b), '[]') from storage.buckets b where id = ${lit(balde)}`) || '[]');
+      if (!b) return enviar(400, { statusCode: '404', error: 'Bucket not found', message: 'Bucket not found' });
+      if (b.allowed_mime_types?.length && !b.allowed_mime_types.includes(tipo.split(';')[0])) return enviar(400, { statusCode: '415', error: 'invalid_mime_type', message: `mime type ${tipo} is not supported` });
+      if (b.file_size_limit && bytes.length > b.file_size_limit) return enviar(400, { statusCode: '413', error: 'Payload too large', message: 'The object exceeded the maximum allowed size' });
+      try { await comoPapel(`insert into storage.objects (bucket_id, name) values (${lit(balde)}, ${lit(nome)})`); }
+      catch (e) { return enviar(400, { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' }); }
+      arquivos.set(chaveArq, { bytes, tipo });
+      return enviar(200, { Key: chaveArq, Id: crypto.randomUUID() });
+    }
+    if (req.method === 'GET') {
+      if (!(await visivel())) return enviar(400, { statusCode: '404', error: 'not_found', message: 'Object not found' });
+      const a = arquivos.get(chaveArq); if (!a) return enviar(400, { statusCode: '404', error: 'not_found', message: 'Object not found' });
+      return enviar(200, a.bytes, { 'content-type': a.tipo });
+    }
+    if (req.method === 'DELETE') {
+      const { prefixes = [] } = JSON.parse(bruto.toString() || '{}');
+      const apagados = [];
+      for (const p of prefixes) {
+        const out = await comoPapel(`with d as (delete from storage.objects where bucket_id = ${lit(balde)} and name = ${lit(p)} returning name) select count(*) from d`);
+        if (out === '1') { arquivos.delete(`${balde}/${p}`); apagados.push({ name: p }); }
+      }
+      return enviar(200, apagados);
+    }
+    return enviar(405, { message: 'método' });
+  } catch (e) { return enviar(500, { message: e.message }); }
+}
+
 // ------------------------------------------------------------------ servidor
 export const registro = [];
 export function iniciar(porta = PORTA) {
@@ -302,6 +367,7 @@ export function iniciar(porta = PORTA) {
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': 'content-range' };
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
     const url = new URL(req.url, `http://127.0.0.1:${porta}`);
+    if (url.pathname.startsWith('/storage/v1')) return armazenamento(req, res, url, cors);
     let txt = ''; for await (const p of req) txt += p;
     const corpo = txt ? JSON.parse(txt) : null;
     const entrada = { metodo: req.method, caminho: url.pathname + url.search };

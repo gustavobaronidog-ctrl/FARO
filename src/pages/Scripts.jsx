@@ -53,7 +53,7 @@ export default function Scripts() {
             {lista.map(s => (
               <button key={s.id} className="lead-linha" style={{ gridTemplateColumns: '1fr auto', padding: '12px 16px', minHeight: 0, background: ver?.id === s.id ? 'var(--sup-2)' : undefined }} onClick={() => setVerId(s.id)}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{canal === 'objecao' && s.gatilho ? `"${s.gatilho}"` : s.titulo.replace(/^[^·]*·\s*/, '')}</div>
+                  <div style={{ fontWeight: 600 }}>{canal === 'objecao' && s.gatilho ? `"${s.gatilho}"` : s.titulo.replace(/^(?!SPIN)[^·]*·\s*/, '')}</div>
                   <div className="etiquetas">
                     <span className="etq">{s.nicho ? nomeNicho(s.nicho) : 'Todos os nichos'}</span>
                     {s.sinal && <span className="etq pos">Quando: {nomeSinal(s.sinal)}</span>}

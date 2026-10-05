@@ -88,6 +88,35 @@ globalThis.fetch = async (url, op = {}) => {
     // como na camada grátis de 2026: o apelido existe, mas a pesquisa no Google não é liberada
     if (!['gemini-flash-latest', 'gemini-3.5-flash'].includes(modelo)) return new Response(JSON.stringify({ error: { code: 404, message: `models/${modelo} is not found` } }), { status: 404 });
     if (corpo.tools) return new Response(JSON.stringify({ error: { code: 400, message: 'Search Grounding is not supported for this API key tier.' } }), { status: 400 });
+    // treinador de ligações: respostas em JSON, como o Gemini faz com responseSchema
+    if (corpo.generationConfig?.responseMimeType === 'application/json') {
+      if (!corpo.generationConfig.responseSchema) return new Response(JSON.stringify({ error: { code: 400, message: 'schema faltando' } }), { status: 400 });
+      const audio = corpo.contents[0].parts.find(p => p.inline_data);
+      if (audio) {
+        const wav = Buffer.from(audio.inline_data.data, 'base64');
+        const ok = wav.toString('ascii', 0, 4) === 'RIFF' && wav.toString('ascii', 8, 12) === 'WAVE' && wav.readUInt32LE(24) === 8000 && wav.readUInt16LE(22) === 1;
+        chamadasExternas.push({ tipo: 'gemini-audio', mime: audio.inline_data.mime_type, bytes: wav.length, wavValido: ok });
+        if (!ok || audio.inline_data.mime_type !== 'audio/wav') return new Response(JSON.stringify({ error: { code: 400, message: 'Unsupported audio' } }), { status: 400 });
+        return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ teve_conversa: true, falas: [
+          { quem: 'vendedor', inicio: '00:00', texto: 'Boa tarde, falo com a responsável?' },
+          { quem: 'cliente', inicio: '00:03', texto: 'É ela.' },
+          { quem: 'vendedor', inicio: '00:05', texto: 'E cliente que marca e falta, acontece?' },
+          { quem: 'cliente', inicio: '00:09', texto: 'Umas quatro por semana, viu.' },
+        ] }) }] }, finishReason: 'STOP' }] });
+      }
+      const pedidoJson = corpo.contents[0].parts[0].text;
+      chamadasExternas.push({ tipo: 'gemini-analise', temTranscricao: /CLIENTE: Umas quatro por semana/.test(pedidoJson), temSpin: /SPIN/.test(corpo.systemInstruction.parts[0].text) });
+      const crit = (nota) => ({ nota, comentario: 'ok' });
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        nota_geral: 12, resumo: 'Achou a dor e não aprofundou.', veredito: 'Achou o ouro e não cavou.',
+        spin: { situacao: crit(7.5), problema: crit(7), implicacao: crit(2.4), necessidade: crit(3) },
+        habilidades: { abertura: crit(8), escuta: crit(6), objecoes: crit(5), fechamento: crit(5.5), tom: crit(7) },
+        pontos_fortes: [{ titulo: 'Abertura', inicio: '00:00', trecho: 'Boa tarde', por_que: 'educado' }],
+        pontos_fracos: [{ titulo: 'Pulou a implicação', inicio: '00:09', trecho: 'Umas quatro por semana', melhor_seria: 'E quanto custa cada horário vazio?' }],
+        momento_chave: { inicio: '00:09', descricao: 'Ela deu o número.' }, perguntas_que_faltaram: ['Quanto sai um atendimento?'],
+        proxima_ligacao: ['a', 'b', 'c'], proximo_passo_com_este_cliente: 'Ligar amanhã às 10h.', foco_do_treino: 'Implicação', evolucao: 'Primeira ligação.',
+      }) }] }, finishReason: 'STOP' }] });
+    }
     const pedido = corpo.contents[0].parts[0].text;
     const texto = /Quem é/.test(pedido) ? '**Quem é**: salão de bairro.\n**Gancho de abertura**: Vi que vocês agendam pelo WhatsApp…'
       : /O lead acabou de dizer/.test(pedido) ? '1) RESPOSTA PARA FALAR AGORA\nEntendo…\n2) PERGUNTA DE VOLTA\nComo vocês…\n3) SE ELE INSISTIR\nPosso te mandar…'
@@ -110,7 +139,7 @@ globalThis.fetch = async (url, op = {}) => {
 
 // ------------------------------------------------------------------ funções da Vercel
 const handlers = {};
-for (const nome of ['acao', 'ia', 'cron']) handlers[nome] = (await import(path.join(raiz, 'api', nome + '.js'))).default;
+for (const nome of ['acao', 'ia', 'cron', 'coach']) handlers[nome] = (await import(path.join(raiz, 'api', nome + '.js'))).default;
 
 function resVercel(res) {
   res.status = (c) => { res.statusCode = c; return res; };

@@ -14,7 +14,8 @@ com cliente ideal, sinais, scripts e aprendizado separados. Nada se mistura.
 | **Sessão de ataque** | Um lead por vez, script do lado, resultado com as teclas 1 a 0. O próximo passo é agendado sozinho. |
 | **Radar** | Todos os leads, com filtros por temperatura, nicho, sinal, cidade, estado e origem. |
 | **Funil** | Arrastar entre Tentando, Conversando, Demonstração, Em teste, Fechado e Perdido. |
-| **Scripts** | Roteiros por nicho e por situação (ligação, WhatsApp, follow-up, objeções), com a taxa de sucesso de cada um. |
+| **Scripts** | Roteiros por nicho e por situação (ligação, WhatsApp, follow-up, objeções), com a taxa de sucesso de cada um. As ligações seguem o método **SPIN** (Situação, Problema, Implicação, Necessidade). |
+| **Treino** | Cada ligação gravada vira uma aula: nota de 0 a 10, nota de cada etapa do SPIN, o que você acertou, o que falar no lugar, perguntas que faltaram e a sua evolução ligação após ligação. |
 | **Caçada** | Onde os robôs procuram (nicho × cidade), cota grátis do Google, empresas recém-abertas da Receita. |
 | **Aprendizado** | Quanto vale cada sinal hoje, o que está convertendo por nicho/estado/origem, motivos de perda. |
 | **Ajustes** | Produtos e cliente ideal, equipe, limites. |
@@ -41,8 +42,9 @@ Nada aqui mexe no Tem Encaixe ou no app de mercado. É um projeto novo, com banc
    - O plano grátis permite 2 projetos por organização. Se você já tem 2, crie uma organização nova só para o Faro.
 2. Menu **SQL Editor** → **New query** → cole o conteúdo inteiro de `supabase/01_estrutura.sql` → **Run**.
 3. Nova query → cole `supabase/02_tem_encaixe.sql` → **Run**. (Isso cria o espaço do Tem Encaixe com nichos, pesos, 50 praças e 24 scripts.)
-4. Menu **Authentication → Sign In / Providers → Email**: desligue **Confirm email** (assim você entra direto, sem esperar e-mail).
-5. Menu **Project Settings → API Keys**: copie e guarde
+4. Nova query → cole `supabase/03_spin_e_treino.sql` → **Run**. (Roteiros SPIN, gravação das ligações e o treino com IA. Pode rodar de novo sem medo.)
+5. Menu **Authentication → Sign In / Providers → Email**: desligue **Confirm email** (assim você entra direto, sem esperar e-mail).
+6. Menu **Project Settings → API Keys**: copie e guarde
    - **Project URL** (fica em Project Settings → Data API, ou no botão **Connect**)
    - **Publishable key** (começa com `sb_publishable_`)
    - **Secret key** (começa com `sb_secret_`; é secreta: só vai na Vercel e no GitHub)
@@ -101,6 +103,14 @@ Depois, no repositório: **Settings → Secrets and variables → Actions → Ne
 3. No WhatsApp, o botão verde já abre a conversa com a mensagem certa para aquele lead.
 4. Antes de ligar para um lead grande, use **Dossiê antes de ligar**.
 5. Quando ouvir uma objeção nova, digite em **Objeções → Como respondo?**.
+6. **Grave a ligação** (gaveta do lead → **Ligações gravadas**, ou o gravador na sessão de ataque) e, em menos de um minuto, veja a aula em **Treino**.
+
+**Gravar ligações:**
+- **Gravar no viva-voz**: ligue com o celular no viva-voz perto do computador (ou de outro celular) e grave pelo microfone.
+- **Gravar no computador**: para ligação pelo WhatsApp Web/Desktop. Compartilhe a **Tela inteira** e marque **Compartilhar áudio do sistema**: grava você e o cliente.
+- **Enviar áudio**: ligou pelo celular com um app gravador (Android)? Envie o arquivo (MP3, M4A, WAV…).
+- O áudio é guardado em qualidade de telefone (~1 MB por minuto, até ~30 min por ligação), privado: só a equipe do Faro ouve.
+- Avise no começo: "essa ligação pode ser gravada pra melhorar o atendimento".
 
 **Ligar pelo computador:** no Windows, abra **Vincular ao Celular** e pareie o celular (Android; iPhone só no Windows 11). Depois, em **Configurações → Aplicativos → Aplicativos padrão**, procure **TEL** e escolha Vincular ao Celular. No Mac, o FaceTime liga pelo iPhone. No celular, liga direto.
 
@@ -125,6 +135,7 @@ Quem se cadastrar no link do Faro fica **pendente** e não vê nada até você l
 | Supabase | 500 MB, pausa após 7 dias sem uso | Os robôs diários mantêm ativo; leads frios sem contato há 6 meses são apagados |
 | Vercel Hobby | robôs 1x/dia | Botões "Caçar agora" para rodar na hora |
 | Gemini | limite por minuto | Se estourar, a tela avisa para tentar em 1 minuto |
+| Gravações (Supabase Storage) | 1 GB | ~1.000 minutos de ligação; apague as antigas no Treino se precisar |
 | GitHub Actions | 2.000 min/mês (repositório privado) | A importação mensal usa uns 60–90 min |
 
 **Instagram:** o Instagram bloqueia leitura automática, então o Faro não lê o perfil; ele usa o link do Google, o site e o Linktree. O dossiê da IA pesquisa o Instagram pelo Google.
@@ -136,7 +147,8 @@ Os dados vêm de fontes públicas (Google Maps e Receita Federal) e são usados 
 ## Para desenvolvedores
 
 - `supabase/` banco (tabelas, segurança por linha, pontuação, cadência, aprendizado)
-- `api/` funções da Vercel: `cron.js` (rotina diária), `acao.js` (botões dos robôs), `ia.js` (Gemini)
+- `api/` funções da Vercel: `cron.js` (rotina diária), `acao.js` (botões dos robôs), `ia.js` (Gemini), `coach.js` (transcrição e análise SPIN das ligações)
+- `src/lib/audio.js` gravação no navegador e conversão para WAV 8 kHz mono (sem biblioteca externa)
 - `api/_lib/modelo.js` regressão logística com prior gaussiano no palpite inicial
 - `scripts/cnpj/importar.py` importador da Receita (só biblioteca padrão do Python)
 - `src/` interface React

@@ -51,7 +51,7 @@ export const MOTIVOS_PERDA = ['Achou caro', 'Já usa concorrente', 'Não vê nec
 
 export const ROTULO_RESULTADO = Object.fromEntries([
   ...RESULTADOS.map(r => [r.chave, r.nome]),
-  ['caixa_postal', 'Caixa postal'], ['respondeu', 'Respondeu'], ['dossie', 'Dossiê da IA'],
+  ['caixa_postal', 'Caixa postal'], ['respondeu', 'Respondeu'], ['dossie', 'Dossiê da IA'], ['analise_ligacao', 'Ligação analisada pela IA'],
 ]);
 
 // ---------------------------------------------------------------- telefone
@@ -139,7 +139,8 @@ export function scriptsParaLead(scripts, lead, canal) {
   const sinais = new Set(lead?.sinais_ativos || []);
   return scripts
     .filter(s => s.ativo && s.canal === canal && (!s.nicho || s.nicho === lead?.nicho) && (!s.sinal || sinais.has(s.sinal)))
-    .map(s => ({ ...s, _pontos: (s.sinal ? 3 : 0) + (s.nicho ? 2 : 0) + (s.positivos + 1) / (s.usos + 2) }))
+    // roteiros SPIN são o padrão das ligações; os outros continuam disponíveis para escolher
+    .map(s => ({ ...s, _pontos: (s.sinal ? 3 : 0) + (s.nicho ? 2 : 0) + (/^SPIN\b/.test(s.titulo) ? 4 : 0) + (s.positivos + 1) / (s.usos + 2) }))
     .sort((a, b) => b._pontos - a._pontos || a.ordem - b.ordem);
 }
 export function taxaScript(s) {

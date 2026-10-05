@@ -169,3 +169,57 @@ async function chamar(caminho, corpo) {
 export const acaoRobo = (acao, corpo = {}) => chamar('/api/acao', { acao, ...corpo });
 export const pedirIA = (corpo) => chamar('/api/ia', corpo);
 export async function pesosPadrao(produtoId) { return ok(await supabase.rpc('pesos_padrao', { p_produto: produtoId })); }
+
+// ---------------------------------------------------------------- ligações gravadas e treino
+const SEM_TABELA = /ligacoes|schema cache|does not exist|Bucket not found/i;
+const avisoBanco = (e) => (SEM_TABELA.test(e.message) ? new Error('Falta rodar o arquivo supabase/03_spin_e_treino.sql no Supabase.') : e);
+
+export async function listarLigacoes(leadId) {
+  const { data, error } = await supabase.from('ligacoes').select('*, perfis(nome)').eq('lead_id', leadId).order('criado_em', { ascending: false });
+  if (error) throw avisoBanco(error);
+  return data;
+}
+export async function ligacoesDoTreino({ usuarioId = null, dias = 120 } = {}) {
+  let q = supabase.from('ligacoes')
+    .select('id, lead_id, usuario, nota, analise, fala_vendedor, duracao_seg, status, criado_em, leads(nome, nicho), perfis(nome)')
+    .gte('criado_em', new Date(Date.now() - dias * 864e5).toISOString())
+    .order('criado_em', { ascending: true });
+  if (usuarioId) q = q.eq('usuario', usuarioId);
+  const { data, error } = await q;
+  if (error) throw avisoBanco(error);
+  return data;
+}
+export async function enviarGravacao(lead, wav, { duracao, origem }) {
+  const caminho = `${lead.produto_id}/${lead.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.wav`;
+  const up = await supabase.storage.from('gravacoes').upload(caminho, wav, { contentType: 'audio/wav', upsert: false });
+  if (up.error) throw avisoBanco(up.error);
+  const { data, error } = await supabase.from('ligacoes')
+    .insert({ lead_id: lead.id, produto_id: lead.produto_id, audio_path: caminho, duracao_seg: duracao, origem })
+    .select('*, perfis(nome)').single();
+  if (error) { await supabase.storage.from('gravacoes').remove([caminho]); throw avisoBanco(error); }
+  return data;
+}
+export async function linkDoAudio(caminho) {
+  const { data, error } = await supabase.storage.from('gravacoes').createSignedUrl(caminho, 60 * 60 * 6);
+  if (error) throw avisoBanco(error);
+  return data.signedUrl;
+}
+export async function carregarLigacao(id) {
+  return ok(await supabase.from('ligacoes').select('*, perfis(nome), leads(nome, nicho, responsavel)').eq('id', id).single());
+}
+export async function apagarLigacao(lig) {
+  await supabase.storage.from('gravacoes').remove([lig.audio_path]);
+  ok(await supabase.from('ligacoes').delete().eq('id', lig.id));
+}
+export const pedirCoach = (acao, ligacaoId) => chamar('/api/coach', { acao, ligacao_id: ligacaoId });
+// Transcreve (se ainda não transcreveu) e analisa. Retoma de onde parou se der erro no meio.
+export async function processarLigacao(lig, aoAvancar) {
+  if (!Array.isArray(lig.transcricao) || lig.transcricao.length < 2) {
+    aoAvancar?.('transcrevendo');
+    await pedirCoach('transcrever', lig.id);
+  }
+  aoAvancar?.('analisando');
+  await pedirCoach('analisar', lig.id);
+  aoAvancar?.('pronta');
+  return carregarLigacao(lig.id);
+}

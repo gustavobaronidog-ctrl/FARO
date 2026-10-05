@@ -42,8 +42,20 @@ alter default privileges for role dono in schema public grant all on tables to a
 alter default privileges for role dono in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges for role dono in schema public grant all on sequences to anon, authenticated, service_role;
 SQL
+# armazenamento de arquivos como no Supabase (dono do esquema é supabase_storage_admin; o "postgres" do painel é membro dele)
+$SU -d faro_e2e >/dev/null <<'SQL'
+do $$ begin create role supabase_storage_admin nologin noinherit; exception when duplicate_object then null; end $$;
+create schema storage authorization supabase_storage_admin;
+create table storage.buckets (id text primary key, name text not null, owner uuid, public boolean default false, file_size_limit bigint, allowed_mime_types text[], created_at timestamptz default now());
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets(id), name text, owner uuid default nullif(current_setting('request.jwt.claim.sub', true), '')::uuid, created_at timestamptz default now(), metadata jsonb, unique (bucket_id, name));
+alter table storage.buckets owner to supabase_storage_admin; alter table storage.objects owner to supabase_storage_admin;
+alter table storage.objects enable row level security;
+grant usage on schema storage to dono, authenticated, anon, service_role;
+grant all on storage.buckets, storage.objects to dono, authenticated, service_role;
+grant supabase_storage_admin to dono;
+SQL
 cd "$(dirname "$0")/../.."
-for f in supabase/01_estrutura.sql supabase/02_tem_encaixe.sql; do
+for f in supabase/01_estrutura.sql supabase/02_tem_encaixe.sql supabase/03_spin_e_treino.sql; do
   $SU -d faro_e2e -U dono -f "$f" 2>&1 | grep -v NOTICE | grep -E "ERROR|FATAL" && { echo "falhou: $f"; exit 1; } || true
 done
 echo ">>> banco tipo Supabase montado"

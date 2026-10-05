@@ -12,6 +12,10 @@ export default function Ajustes() {
   return (
     <>
       <div className="topo"><div><h1>Ajustes</h1><p>Produtos, cliente ideal de cada um, equipe e limites dos robôs.</p></div></div>
+      <nav className="mais-telas" aria-label="Outras telas">
+        <a className="btn" href="#/cacada"><Icone nome="cacada" tam={16} /> Caçada</a>
+        <a className="btn" href="#/aprendizado"><Icone nome="aprendizado" tam={16} /> Aprendizado</a>
+      </nav>
       <div className="duas-col" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
         <div>{admin ? <ProdutoEditor key={produto?.id || 'novo'} /> : <p className="apagado">Só o administrador edita os produtos.</p>}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

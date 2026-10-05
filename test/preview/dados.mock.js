@@ -1,5 +1,6 @@
 // Substitui src/lib/dados.js na prévia local: mesmos nomes, dados de exemplo em memória
 import base from './dados.json';
+import spin from './spin.json';
 
 const db = JSON.parse(JSON.stringify(base));
 const espera = (v) => new Promise(r => setTimeout(() => r(structuredClone(v)), 60));
@@ -34,7 +35,7 @@ export async function atualizarLead(id) { return carregarLead(id); }
 export async function criarLead() { return espera(db.leads[0]); }
 export async function anotar() { return espera({}); }
 export async function leadsDoFunil() { return espera(db.leads.filter(l => ['tentando', 'conversando', 'demo', 'teste', 'ganho'].includes(l.estagio))); }
-export async function listarScripts() { return espera(db.scripts); }
+export async function listarScripts() { return espera([...spin, ...db.scripts]); }
 export async function salvarScript(s) { return espera(s); }
 export async function excluirScript() { return null; }
 export async function listarPesos() { return espera(db.pesos); }
@@ -63,3 +64,5 @@ export async function pedirIA({ acao }) {
     ? { texto: '1) RESPOSTA PARA FALAR AGORA\nEntendo! E faz sentido você ter cuidado com gasto agora…\n\n2) PERGUNTA DE VOLTA\nQuantas clientes você acha que deixam de marcar porque a resposta demorou?\n\n3) SE ELE INSISTIR\nFaz o teste de 7 dias sem pagar nada e a gente conversa sexta.' }
     : { texto: 'Boa tarde! Aqui é o Gustavo, do Tem Encaixe…' };
 }
+
+export * from './treino.mock.js';

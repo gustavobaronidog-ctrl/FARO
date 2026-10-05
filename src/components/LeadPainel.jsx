@@ -3,6 +3,7 @@ import Icone from './Icone.jsx';
 import { Termometro, Sinais, TextoIA } from './Comuns.jsx';
 import ScriptBox from './ScriptBox.jsx';
 import Registrar from './Registrar.jsx';
+import Gravacoes from './Gravacoes.jsx';
 import { useFaro } from '../Contexto.jsx';
 import * as dados from '../lib/dados.js';
 import { formatarTelefone, linkLigar, linkWhatsApp, quando, ESTAGIOS, ROTULO_RESULTADO, nomeEstagio, corTermica } from '../lib/util.js';
@@ -30,7 +31,7 @@ function Gaveta({ pedido, fechar }) {
   useEffect(() => { carregar(); }, [carregar, versao]);
 
   useEffect(() => {
-    const f = e => { if (e.key === 'Escape' && !e.target.closest('input, textarea')) fechar(); };
+    const f = e => { if (e.key === 'Escape' && !e.target.closest('input, textarea') && !document.querySelector('.modal')) fechar(); }; // com um modal aberto, o Esc fecha só o modal
     window.addEventListener('keydown', f);
     return () => window.removeEventListener('keydown', f);
   }, [fechar]);
@@ -83,6 +84,8 @@ function Gaveta({ pedido, fechar }) {
 
           <ScriptBox lead={lead} canalInicial={pedido.canal || 'ligacao'} scriptInicial={pedido.scriptId}
             aoEscolher={(id, canal) => setScriptAtual({ id, canal })} />
+
+          <Gravacoes lead={lead} />
 
           <PorQue lead={lead} />
           <Inteligencia lead={lead} aoMudar={carregar} />
