@@ -70,6 +70,23 @@ export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicia
     finally { setCarregandoIa(false); }
   };
 
+  const saidaIa = (
+    <>
+      {carregandoIa && <p className="apagado" style={{ marginTop: 12 }}><span className="carregando" /> A IA está escrevendo…</p>}
+      {ia && (
+        <div style={{ marginTop: 14 }}>
+          <div className="ia-saida"><TextoIA texto={ia.texto} /></div>
+          <div className="linha" style={{ marginTop: 8 }}>
+            <button className="btn pq" onClick={() => copiar(ia.texto)}><Icone nome="copiar" tam={15} /> Copiar</button>
+            {canal !== 'objecao' && canal !== 'ligacao' && lead.telefone && (
+              <a className="btn pq whats" href={linkWhatsApp(lead.telefone, ia.texto)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" tam={15} /> Enviar esta versão</a>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <section className="bloco">
       <div className="bloco-cab">
@@ -80,6 +97,15 @@ export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicia
         </div>
       </div>
       <div className="bloco-corpo">
+        {/* a pergunta para a IA fica no topo da aba: é o que se usa no meio da ligação */}
+        {canal === 'objecao' && (
+          <form className="linha" style={{ marginBottom: 14 }} onSubmit={e => { e.preventDefault(); chamarIa('objecao', objecao); }}>
+            <input className="entrada" style={{ flex: 1, minWidth: 200 }} value={objecao} onChange={e => setObjecao(e.target.value)}
+              placeholder="O que o cliente falou? Ex.: minha sobrinha faz meu Instagram" aria-label="Objeção do cliente" />
+            <button className="btn pq" disabled={carregandoIa || !objecao.trim()}><Icone nome="faisca" tam={15} /> Como respondo?</button>
+          </form>
+        )}
+        {canal === 'objecao' && (carregandoIa || ia) && <div style={{ marginBottom: 16 }}>{saidaIa}</div>}
         {opcoes.length === 0 && <p className="apagado">Nenhum script de {CANAIS.find(c => c.chave === canal)?.nome.toLowerCase()} para este nicho ainda. Crie um na tela Scripts.</p>}
         {opcoes.length > 1 && (
           <div className="script-escolha">
@@ -109,25 +135,7 @@ export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicia
             )}
           </div>
         )}
-        {canal === 'objecao' && (
-          <form className="linha" style={{ marginTop: 16 }} onSubmit={e => { e.preventDefault(); chamarIa('objecao', objecao); }}>
-            <input className="entrada" style={{ flex: 1, minWidth: 200 }} value={objecao} onChange={e => setObjecao(e.target.value)}
-              placeholder="O que o cliente falou? Ex.: minha sobrinha faz meu Instagram" aria-label="Objeção do cliente" />
-            <button className="btn pq" disabled={carregandoIa || !objecao.trim()}><Icone nome="faisca" tam={15} /> Como respondo?</button>
-          </form>
-        )}
-        {carregandoIa && <p className="apagado" style={{ marginTop: 12 }}><span className="carregando" /> A IA está escrevendo…</p>}
-        {ia && (
-          <div style={{ marginTop: 14 }}>
-            <div className="ia-saida"><TextoIA texto={ia.texto} /></div>
-            <div className="linha" style={{ marginTop: 8 }}>
-              <button className="btn pq" onClick={() => copiar(ia.texto)}><Icone nome="copiar" tam={15} /> Copiar</button>
-              {canal !== 'objecao' && canal !== 'ligacao' && lead.telefone && (
-                <a className="btn pq whats" href={linkWhatsApp(lead.telefone, ia.texto)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" tam={15} /> Enviar esta versão</a>
-              )}
-            </div>
-          </div>
-        )}
+        {canal !== 'objecao' && saidaIa}
       </div>
     </section>
   );
