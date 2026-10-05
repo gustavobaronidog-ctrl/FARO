@@ -33,7 +33,7 @@ export async function gerar({ sistema, prompt, pesquisarNaWeb = false, chave, mo
     catch (e) {
       ultimo = e;
       // modelo aposentado ou inexistente para esta chave: tenta o próximo
-      if (e.status === 404 || (e.status === 400 && /model/i.test(e.message) && !/search|grounding|tool/i.test(e.message))) continue;
+      if ([404, 500, 502, 503, 504].includes(e.status) || (e.status === 400 && /model/i.test(e.message) && !/search|grounding|tool/i.test(e.message))) continue;
       // a camada grátis pode não liberar a pesquisa no Google: refaz sem pesquisa
       if (pesquisarNaWeb && [400, 403, 429].includes(e.status)) {
         try { return await tentativa(m, false); } catch (e2) { ultimo = e2; if (e2.status === 404) continue; throw e2; }

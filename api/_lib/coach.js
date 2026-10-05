@@ -49,7 +49,8 @@ export async function gerarJSON({ sistema, partes, esquema, chave, modelo, tempe
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
       const e = new Error(j?.error?.message || `Gemini HTTP ${r.status}`); e.status = r.status; ultimo = e;
-      if (r.status === 404 || (r.status === 400 && /model/i.test(e.message))) continue; // modelo aposentado: tenta o próximo
+      // modelo aposentado, ou sobrecarregado no momento (acontece com o modelo mais novo): tenta o próximo
+      if ([404, 500, 502, 503, 504].includes(r.status) || (r.status === 400 && /model/i.test(e.message))) continue;
       throw e;
     }
     const texto = (j.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('').trim();
