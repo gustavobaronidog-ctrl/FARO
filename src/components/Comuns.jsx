@@ -37,7 +37,7 @@ export function Sinais({ lead, max = 4 }) {
 }
 
 export function LeadLinha({ lead, aoAbrir, aoContatar }) {
-  const { produto } = useFaro();
+  const { produto, podeWhats } = useFaro();
   const nicho = produto?.nichos?.find(n => n.chave === lead.nicho)?.nome;
   const temRetorno = lead.motivo_fila === 'retorno' || (lead.proxima_acao_em && !['ganho', 'perdido'].includes(lead.estagio));
   return (
@@ -65,11 +65,15 @@ export function LeadLinha({ lead, aoAbrir, aoContatar }) {
           <>
             <a className="btn btn-icone ligar" href={linkLigar(lead.telefone)} title={`Ligar ${formatarTelefone(lead.telefone)}`}
               onClick={() => aoContatar?.(lead, 'ligacao')}><Icone nome="telefone" /></a>
-            {lead.celular && (
+            {lead.celular && (podeWhats(lead) ? (
               <button className="btn btn-icone whats" title="Abrir no WhatsApp com o script" onClick={() => aoContatar?.(lead, 'whatsapp')}>
                 <Icone nome="whats" />
               </button>
-            )}
+            ) : (
+              <span className="btn btn-icone whats-travado" title="O WhatsApp libera depois que o cliente atender a sua ligação" aria-label="WhatsApp travado até o cliente atender">
+                <Icone nome="cadeado" tam={16} />
+              </span>
+            ))}
           </>
         )}
       </div>
@@ -79,7 +83,8 @@ export function LeadLinha({ lead, aoAbrir, aoContatar }) {
 
 export function Modal({ titulo, aoFechar, children, largura }) {
   useEffect(() => {
-    const f = e => { if (e.key === 'Escape') aoFechar(); };
+    // marca o Esc como já usado: assim a gaveta de trás não fecha junto
+    const f = e => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); aoFechar(); } };
     window.addEventListener('keydown', f);
     return () => window.removeEventListener('keydown', f);
   }, [aoFechar]);

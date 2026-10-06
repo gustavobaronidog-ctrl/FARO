@@ -12,7 +12,17 @@ export function aoMudarSessao(fn) { ouvinte = fn; return () => {}; }
 export async function entrar() { logado = true; sessionStorage.setItem('prev-logado', '1'); ouvinte?.(await sessaoAtual()); }
 export async function cadastrar() {}
 export async function sair() { logado = false; sessionStorage.removeItem('prev-logado'); ouvinte?.(null); }
-export async function meuPerfil() { return espera(db.perfil); }
+// prévia como vendedora: abra com #vendedor na primeira vez
+if (location.hash.includes('vendedor')) sessionStorage.setItem('prev-papel', 'vendedor');
+if (location.hash.includes('administrador')) sessionStorage.removeItem('prev-papel');
+const papel = () => sessionStorage.getItem('prev-papel') || 'admin';
+export async function meuPerfil() { return espera(papel() === 'vendedor' ? { ...db.perfil, id: 'v-ana', nome: 'Ana Souza', email: 'ana@exemplo.com', papel: 'vendedor', whatsapp: 'apos_ligacao' } : { ...db.perfil, whatsapp: 'sempre' }); }
+export async function reservarLeads() { return 20; }
+export async function liberarLeads() { return 7; }
+export async function equipeResumo() {
+  return { [db.perfil.id]: { na_fila: 31, ligacoes_hoje: 12, atendeu_hoje: 5, positivos_hoje: 3, nota_treino: 6.5 },
+           'v-ana': { na_fila: 28, ligacoes_hoje: 18, atendeu_hoje: 7, positivos_hoje: 4, nota_treino: 5.8, gravadas: 6 } };
+}
 export async function listarProdutos() { return espera(db.produtos); }
 export async function salvarProduto(p) { return espera(p); }
 export async function resumo() { return espera(db.resumo); }
@@ -54,7 +64,11 @@ export async function ultimasExecucoes() {
 }
 export async function lerAjustes() { return espera({ id: 1, google_limite_mensal: 950, google_limite_diario: 30 }); }
 export async function salvarAjustes() {}
-export async function listarEquipe() { return espera([db.perfil]); }
+export async function listarEquipe() {
+  return espera([{ ...db.perfil, whatsapp: 'sempre' },
+    { id: 'v-ana', nome: 'Ana Souza', email: 'ana@exemplo.com', papel: 'vendedor', whatsapp: 'apos_ligacao' },
+    { id: 'v-novo', nome: 'Carlos Lima', email: 'carlos@exemplo.com', papel: 'pendente', whatsapp: 'apos_ligacao' }]);
+}
 export async function atualizarPerfil() {}
 export async function pesosPadrao() { return 16; }
 export async function acaoRobo() { return espera({ novos: 0, encontrados: 0, requisicoes: 0 }); }

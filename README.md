@@ -43,6 +43,7 @@ Nada aqui mexe no Tem Encaixe ou no app de mercado. É um projeto novo, com banc
 2. Menu **SQL Editor** → **New query** → cole o conteúdo inteiro de `supabase/01_estrutura.sql` → **Run**.
 3. Nova query → cole `supabase/02_tem_encaixe.sql` → **Run**. (Isso cria o espaço do Tem Encaixe com nichos, pesos, 50 praças e 24 scripts.)
 4. Nova query → cole `supabase/03_spin_e_treino.sql` → **Run**. (Roteiros SPIN, gravação das ligações e o treino com IA. Pode rodar de novo sem medo.)
+   Depois, `supabase/04_equipe.sql` → **Run**. (Equipe: cada vendedor com a própria fila e o WhatsApp liberado só depois da ligação.) Se um dia rodar o 01 de novo, rode o 03 e o 04 em seguida.
 5. Menu **Authentication → Sign In / Providers → Email**: desligue **Confirm email** (assim você entra direto, sem esperar e-mail).
 6. Menu **Project Settings → API Keys**: copie e guarde
    - **Project URL** (fica em Project Settings → Data API, ou no botão **Connect**)
@@ -125,6 +126,11 @@ Depois, no repositório: **Settings → Secrets and variables → Actions → Ne
 ## Equipe
 
 Quem se cadastrar no link do Faro fica **pendente** e não vê nada até você liberar em **Ajustes → Equipe**. Cada atividade fica registrada com o nome de quem fez.
+
+- **Vendedor** vê só **Hoje** (a fila dele), a ficha dos leads dele, o roteiro, as objeções com IA, a gravação e o **Treino** dele. Não vê Radar, Funil, Scripts, Caçada, Aprendizado nem os Ajustes.
+- **Fila separada:** cada pessoa reserva os leads quentes que vai trabalhar, então ninguém liga duas vezes para o mesmo negócio. Lead reservado e não ligado em 2 dias volta para o monte. Em **Equipe → Devolver leads não ligados** você esvazia a fila de alguém na hora (acontece sozinho quando você tira o acesso).
+- **WhatsApp por etapas:** em **Equipe**, escolha para cada vendedor: *Depois que o cliente atender* (padrão: o botão só aparece depois que o cliente atendeu uma ligação daquele lead), *Travado* (só ligação) ou *Liberado sempre*.
+- **Painel da equipe:** quantos leads cada um tem na fila, ligações e atendimentos de hoje, respostas boas e a nota média no Treino.
 
 ## Limites (para não ter surpresa)
 

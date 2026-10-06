@@ -55,7 +55,7 @@ grant all on storage.buckets, storage.objects to dono, authenticated, service_ro
 grant supabase_storage_admin to dono;
 SQL
 cd "$(dirname "$0")/../.."
-for f in supabase/01_estrutura.sql supabase/02_tem_encaixe.sql supabase/03_spin_e_treino.sql; do
+for f in supabase/01_estrutura.sql supabase/02_tem_encaixe.sql supabase/03_spin_e_treino.sql supabase/04_equipe.sql; do
   $SU -d faro_e2e -U dono -f "$f" 2>&1 | grep -v NOTICE | grep -E "ERROR|FATAL" && { echo "falhou: $f"; exit 1; } || true
 done
 echo ">>> banco tipo Supabase montado"

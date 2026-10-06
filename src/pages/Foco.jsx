@@ -5,12 +5,12 @@ import ScriptBox from '../components/ScriptBox.jsx';
 import Registrar from '../components/Registrar.jsx';
 import { GravarLigacao } from '../components/Gravacoes.jsx';
 import { useFaro } from '../Contexto.jsx';
-import { formatarTelefone, linkLigar, linkWhatsApp, nomeEstagio, quando } from '../lib/util.js';
+import { formatarTelefone, linkLigar, linkWhatsApp, nomeEstagio, quando, TEXTO_WHATS_TRAVADO } from '../lib/util.js';
 
 // Sessão de ataque: um lead por vez, script do lado, resultado no teclado
 export default function Foco({ fila: filaInicial, aoSair }) {
   const [fila] = useState(filaInicial); // congela a lista da sessão (a fila do painel muda enquanto você trabalha)
-  const { produto, abrirLead } = useFaro();
+  const { produto, abrirLead, podeWhats } = useFaro();
   const [i, setI] = useState(0);
   const [placar, setPlacar] = useState({ contatos: 0, bons: 0, fechados: 0 });
   const [script, setScript] = useState({ id: null, canal: 'ligacao' });
@@ -19,7 +19,7 @@ export default function Foco({ fila: filaInicial, aoSair }) {
   useEffect(() => {
     const f = e => {
       if (e.target.closest('input, textarea, select')) return;
-      if (e.key === 'Escape') aoSair();
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.modal, .gaveta')) aoSair();
       if (e.key === 'ArrowRight') setI(x => Math.min(x + 1, fila.length));
       if (e.key === 'ArrowLeft') setI(x => Math.max(x - 1, 0));
     };
@@ -78,7 +78,9 @@ export default function Foco({ fila: filaInicial, aoSair }) {
           <Termometro score={lead.score} />
           <div className="linha">
             {lead.telefone && <a className="btn ligar gd" href={linkLigar(lead.telefone)} onClick={() => setScript(s => ({ ...s, canal: 'ligacao' }))}><Icone nome="telefone" /> Ligar {formatarTelefone(lead.telefone)}</a>}
-            {lead.telefone && <a className="btn whats gd" href={linkWhatsApp(lead.telefone)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" /> WhatsApp</a>}
+            {lead.telefone && (podeWhats(lead)
+              ? <a className="btn whats gd" href={linkWhatsApp(lead.telefone)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" /> WhatsApp</a>
+              : <span className="btn gd whats-travado" title={TEXTO_WHATS_TRAVADO}><Icone nome="cadeado" /> WhatsApp depois da ligação</span>)}
             {lead.instagram && <a className="btn gd" href={`https://instagram.com/${lead.instagram}`} target="_blank" rel="noopener noreferrer"><Icone nome="insta" /></a>}
             {lead.maps_url && <a className="btn gd" href={lead.maps_url} target="_blank" rel="noopener noreferrer" aria-label="Abrir no Maps"><Icone nome="pino" /></a>}
           </div>

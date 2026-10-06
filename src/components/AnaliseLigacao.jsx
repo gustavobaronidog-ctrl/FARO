@@ -40,7 +40,7 @@ export function BarraNota({ nota }) {
 }
 
 export default function AnaliseLigacao({ ligacao: inicial, aoFechar, aoMudar }) {
-  const { toast } = useFaro();
+  const { toast, admin } = useFaro();
   const [lig, setLig] = useState(inicial);
   const [aba, setAba] = useState('analise');
   const [url, setUrl] = useState(null);
@@ -202,7 +202,7 @@ export default function AnaliseLigacao({ ligacao: inicial, aoFechar, aoMudar }) 
       <div className="linha" style={{ borderTop: '1px solid var(--linha)', paddingTop: 12 }}>
         {a && <button className="btn pq fantasma" onClick={refazer} disabled={refazendo}>{refazendo ? <span className="carregando" /> : <Icone nome="girar" tam={14} />} Refazer análise</button>}
         <span className="vazio-linha" />
-        <button className="btn pq fantasma" onClick={apagar}><Icone nome="lixo" tam={14} /> Apagar gravação</button>
+        {admin && <button className="btn pq fantasma" onClick={apagar}><Icone nome="lixo" tam={14} /> Apagar gravação</button>}
       </div>
     </Modal>
   );

@@ -42,14 +42,18 @@ export function TextoScript({ texto }) {
 
 // Script recomendado para o lead, já preenchido com as variáveis
 export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicial, aoEscolher }) {
-  const { scripts, produto, perfil, toast } = useFaro();
-  const [canal, setCanal] = useState(canalInicial);
+  const { scripts, produto, perfil, toast, podeWhats } = useFaro();
+  const whats = podeWhats(lead);
+  const canais = whats ? CANAIS : CANAIS.filter(c => !['whatsapp', 'followup'].includes(c.chave));
+  const [canal, setCanalBruto] = useState(canalInicial);
+  const setCanal = (c) => setCanalBruto(c);
+  useEffect(() => { if (!whats && ['whatsapp', 'followup'].includes(canal)) setCanalBruto('ligacao'); }, [whats, canal]);
   const [escolhido, setEscolhido] = useState(scriptInicial || null);
   const [ia, setIa] = useState(null);
   const [carregandoIa, setCarregandoIa] = useState(false);
   const [objecao, setObjecao] = useState('');
 
-  useEffect(() => { setCanal(canalInicial); }, [canalInicial, lead.id]);
+  useEffect(() => { setCanalBruto(canalInicial); }, [canalInicial, lead.id]);
   useEffect(() => { setIa(null); }, [canal, lead.id]);
 
   const opcoes = useMemo(() => scriptsParaLead(scripts, lead, canal), [scripts, lead, canal]);
@@ -91,10 +95,11 @@ export default function ScriptBox({ lead, canalInicial = 'ligacao', scriptInicia
     <section className="bloco">
       <div className="bloco-cab">
         <div className="abas" role="group" aria-label="Tipo de script">
-          {CANAIS.map(c => (
+          {canais.map(c => (
             <button key={c.chave} aria-pressed={canal === c.chave} onClick={() => { setCanal(c.chave); setEscolhido(null); }}>{c.nome}</button>
           ))}
         </div>
+        {!whats && <span className="mini apagado linha" style={{ gap: 5 }}><Icone nome="cadeado" tam={13} /> WhatsApp depois que o cliente atender</span>}
       </div>
       <div className="bloco-corpo">
         {/* a pergunta para a IA fica no topo da aba: é o que se usa no meio da ligação */}

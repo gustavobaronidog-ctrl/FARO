@@ -223,3 +223,16 @@ export async function processarLigacao(lig, aoAvancar) {
   aoAvancar?.('pronta');
   return carregarLigacao(lig.id);
 }
+
+// ---------------------------------------------------------------- equipe (fila separada por pessoa)
+export async function reservarLeads(produtoId, quantos = 40) {
+  const { data, error } = await supabase.rpc('reservar_leads', { p_produto: produtoId, p_quantos: quantos });
+  if (error && !/reservar_leads|schema cache/i.test(error.message)) throw new Error(error.message);
+  return data ?? null; // null = banco ainda sem o arquivo 04 (a fila funciona como antes)
+}
+export async function liberarLeads(usuarioId) { return ok(await supabase.rpc('liberar_leads', { p_usuario: usuarioId })); }
+export async function equipeResumo(produtoId) {
+  const { data, error } = await supabase.rpc('equipe_resumo', { p_produto: produtoId });
+  if (error) return {};
+  return data || {};
+}

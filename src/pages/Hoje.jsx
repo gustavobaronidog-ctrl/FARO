@@ -9,7 +9,7 @@ import * as dados from '../lib/dados.js';
 import { saudacao, primeiroNome, quando } from '../lib/util.js';
 
 export default function Hoje() {
-  const { produto, perfil, abrirLead, versao, pesos, mudou } = useFaro();
+  const { produto, perfil, abrirLead, versao, pesos, mudou, admin } = useFaro();
   const contatar = useContato();
   const [fila, setFila] = useState(null);
   const [res, setRes] = useState(null);
@@ -21,9 +21,11 @@ export default function Hoje() {
 
   const carregar = useCallback(async () => {
     if (!produto) return;
-    const [f, r, ex] = await Promise.all([dados.filaHoje(produto.id, 80), dados.resumo(produto.id), dados.ultimasExecucoes(8)]);
+    // cada pessoa reserva os leads quentes que vai trabalhar: ninguém liga duas vezes para o mesmo negócio
+    await dados.reservarLeads(produto.id, Math.max(10, Math.min(80, perfil?.meta_contatos_dia || 40)));
+    const [f, r, ex] = await Promise.all([dados.filaHoje(produto.id, 80), dados.resumo(produto.id), admin ? dados.ultimasExecucoes(8) : []]);
     setFila(f); setRes(r); setUltima(ex.find(e => e.produto_id === produto.id && e.tipo === 'google') || null);
-  }, [produto]);
+  }, [produto, perfil?.meta_contatos_dia, admin]);
   useEffect(() => { setFila(null); carregar().catch(() => {}); }, [carregar, versao]);
 
   if (!produto) return <SemProduto />;
@@ -47,13 +49,13 @@ export default function Hoje() {
           <p>
             {res ? <>
               {res.retornos_hoje > 0 ? `${res.retornos_hoje} ${res.retornos_hoje === 1 ? 'retorno combinado' : 'retornos combinados'} e ` : ''}
-              {quentes.length} leads quentes esperando por você no {produto.nome}.
+              {quentes.length} leads quentes {admin ? 'esperando por você' : 'separados só para você'} no {produto.nome}.
             </> : 'Montando sua fila do dia…'}
           </p>
         </div>
         <div className="linha">
           <ProdutoSeletor />
-          <button className="btn" onClick={() => setNovo(true)}><Icone nome="mais" /> Lead</button>
+          {admin && <button className="btn" onClick={() => setNovo(true)}><Icone nome="mais" /> Lead</button>}
           <button className="btn brasa gd" onClick={() => setFoco(true)} disabled={!lista.length}>
             <Icone nome="raio" /> Começar sessão de ataque
           </button>
@@ -91,8 +93,12 @@ export default function Hoje() {
           {fila === null ? <Carregando texto="Montando a fila" /> : lista.length === 0 ? (
             <div className="lista"><div className="vazio">
               <h3>Fila limpa</h3>
-              <p>Ninguém para chamar agora. Mande o robô buscar mais leads ou abra o Radar para escolher a dedo.</p>
-              <button className="btn" onClick={cacarAgora} disabled={ocupado}>{ocupado ? <span className="carregando" /> : <Icone nome="cacada" />} Caçar leads agora</button>
+              {admin ? (
+                <>
+                  <p>Ninguém para chamar agora. Mande o robô buscar mais leads ou abra o Radar para escolher a dedo.</p>
+                  <button className="btn" onClick={cacarAgora} disabled={ocupado}>{ocupado ? <span className="carregando" /> : <Icone nome="cacada" />} Caçar leads agora</button>
+                </>
+              ) : <p>Você ligou para toda a sua fila. Novos leads chegam todo dia de manhã.</p>}
             </div></div>
           ) : (
             <div className="lista">
@@ -102,7 +108,7 @@ export default function Hoje() {
         </section>
 
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="cartao-simples">
+          {admin && <div className="cartao-simples">
             <h3>Robô de caça</h3>
             <p className="pequeno apagado" style={{ marginTop: 4 }}>
               {ultima ? `Última busca ${quando(ultima.iniciado_em)}: ${ultima.novos} novos de ${ultima.encontrados}.` : 'Ainda não rodou. Ele roda sozinho todo dia às 6h.'}
@@ -116,7 +122,7 @@ export default function Hoje() {
             <button className="btn pq" style={{ marginTop: 12 }} onClick={cacarAgora} disabled={ocupado}>
               {ocupado ? <span className="carregando" /> : <Icone nome="cacada" tam={15} />} Caçar agora
             </button>
-          </div>
+          </div>}
           <div className="cartao-simples">
             <h3>O que o Faro aprendeu</h3>
             {insight ? (
@@ -130,11 +136,23 @@ export default function Hoje() {
               </p>
             )}
           </div>
-          <div className="cartao-simples">
-            <h3>{res?.em_aberto ?? 0} negociações abertas</h3>
-            <p className="pequeno apagado" style={{ marginTop: 4 }}>Conversando, em demonstração ou testando. Acompanhe no Funil.</p>
-            <a className="btn pq" href="#/funil" style={{ marginTop: 12 }}><Icone nome="funil" tam={15} /> Abrir funil</a>
-          </div>
+          {admin ? (
+            <div className="cartao-simples">
+              <h3>{res?.em_aberto ?? 0} negociações abertas</h3>
+              <p className="pequeno apagado" style={{ marginTop: 4 }}>Conversando, em demonstração ou testando. Acompanhe no Funil.</p>
+              <a className="btn pq" href="#/funil" style={{ marginTop: 12 }}><Icone nome="funil" tam={15} /> Abrir funil</a>
+            </div>
+          ) : (
+            <div className="cartao-simples">
+              <h3>Como funciona a sua fila</h3>
+              <ol className="plano-lista" style={{ marginTop: 10 }}>
+                <li>Ligue primeiro. Siga o roteiro <b>SPIN</b> que aparece no lead.</li>
+                <li>Grave a ligação e veja a sua nota em <b>Treino</b>.</li>
+                <li>Quando o cliente atender, o <b>WhatsApp</b> daquele lead é liberado para você mandar o link.</li>
+                <li>Os retornos combinados voltam sozinhos para a sua fila no dia certo.</li>
+              </ol>
+            </div>
+          )}
         </aside>
       </div>
       {novo && <NovoLead aoFechar={() => setNovo(false)} />}

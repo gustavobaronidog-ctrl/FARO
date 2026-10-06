@@ -26,6 +26,12 @@ function sql(texto) {
     p.stdin.end('\\set VERBOSITY verbose\n' + texto);
   });
 }
+// json com muitas colunas: o Postgres aceita no máximo 100 argumentos por função, então junta em blocos
+const objetoJson = (itens) => {
+  const blocos = [];
+  for (let i = 0; i < itens.length; i += 40) blocos.push(`jsonb_build_object(${itens.slice(i, i + 40).map(x => `'${x.nome}', ${x.expr}`).join(', ')})`);
+  return blocos.length ? `(${blocos.join(' || ')})` : `'{}'::jsonb`;
+};
 const lit = v => v === null || v === undefined ? 'null' : `'${String(v).replace(/'/g, "''")}'`;
 const ident = n => { if (!/^[a-z_][a-z0-9_]*$/i.test(n)) throw erro(400, 'PGRST100', `nome inválido: ${n}`); return `"${n}"`; };
 function erro(status, code, message, details = null, hint = null) { const e = new Error(message); Object.assign(e, { status, corpo: { code, message, details, hint } }); return e; }
@@ -98,10 +104,10 @@ function colunasSelect(tabela, select, c, alias) {
       const inner = colunasSelect(rel, dentro, c, a2);
       if (paraCima) {
         const cond = paraCima.cols.map((col, i) => `${a2}.${ident(paraCima.refs[i])} = ${alias}.${ident(col)}`).join(' and ');
-        saida.push(`(select json_build_object(${inner.map(x => `'${x.nome}', ${x.expr}`).join(', ')}) from public.${ident(rel)} ${a2} where ${cond}) as ${ident(apelido || rel)}`);
+        saida.push(`(select ${objetoJson(inner)} from public.${ident(rel)} ${a2} where ${cond}) as ${ident(apelido || rel)}`);
       } else if (paraBaixo) {
         const cond = paraBaixo.cols.map((col, i) => `${a2}.${ident(col)} = ${alias}.${ident(paraBaixo.refs[i])}`).join(' and ');
-        saida.push(`(select coalesce(json_agg(json_build_object(${inner.map(x => `'${x.nome}', ${x.expr}`).join(', ')})), '[]') from public.${ident(rel)} ${a2} where ${cond}) as ${ident(apelido || rel)}`);
+        saida.push(`(select coalesce(json_agg(${objetoJson(inner)}), '[]') from public.${ident(rel)} ${a2} where ${cond}) as ${ident(apelido || rel)}`);
       } else throw erro(400, 'PGRST200', `Could not find a relationship between '${tabela}' and '${rel}' in the schema cache`);
       continue;
     }
@@ -188,7 +194,7 @@ async function rest(req, url, corpo, papel, claims) {
   if (!c.colunas[tabela]) throw erro(404, '42P01', `relation "public.${tabela}" does not exist`);
   const A = 't';
   const sel = colunasSelect(tabela, url.searchParams.get('select'), c, A);
-  const proj = `json_build_object(${sel.map(x => `'${x.nome}', ${x.expr}`).join(', ')})`;
+  const proj = objetoJson(sel);
   const onde = ondeDe(params, A, c, tabela);
   const devolver = prefer.includes('return=representation');
   const contar = prefer.includes('count=exact');

@@ -63,6 +63,15 @@ export function formatarTelefone(t) {
   return num.length === 9 ? `(${ddd}) ${num.slice(0, 5)}-${num.slice(5)}` : `(${ddd}) ${num.slice(0, 4)}-${num.slice(4)}`;
 }
 export const linkLigar = t => `tel:+${String(t || '').replace(/\D/g, '')}`;
+// WhatsApp liberado para esta pessoa neste lead? Admin e "sempre": sim. "Depois da ligação": só se o cliente já atendeu.
+export function whatsappLiberado(perfil, lead) {
+  if (!perfil || perfil.papel === 'admin') return true;
+  const modo = perfil.whatsapp || 'apos_ligacao';
+  if (modo === 'sempre') return true;
+  if (modo === 'nunca') return false;
+  return !!lead?.atendeu_em || ['conversando', 'demo', 'teste', 'ganho'].includes(lead?.estagio);
+}
+export const TEXTO_WHATS_TRAVADO = 'O WhatsApp libera depois que o cliente atender a sua ligação';
 export const linkWhatsApp = (t, texto = '') =>
   `https://wa.me/${String(t || '').replace(/\D/g, '')}${texto ? `?text=${encodeURIComponent(String(texto).replace(/\*\*(.+?)\*\*/g, '*$1*'))}` : ''}`; // no WhatsApp negrito é *assim*
 

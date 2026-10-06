@@ -58,7 +58,10 @@ with sync_playwright() as p:
     pg.get_by_role("button", name="Transcrição").click()
     pg.get_by_text("Umas quatro por semana, viu.").wait_for()
     pg.keyboard.press("Escape")
-    pg.locator(".gravacao", has_text="Achou o ouro").first.wait_for()
+    try:
+        pg.locator(".gravacao", has_text="Achou o ouro").first.wait_for(timeout=10000)
+    except Exception:
+        pg.screenshot(path=f"{FOTOS}/FALHA-treino.png"); raise
     passo("transcrição na tela e ligação listada no lead")
 
     pg.locator(".gravador input[type=file]").set_input_files(arq)

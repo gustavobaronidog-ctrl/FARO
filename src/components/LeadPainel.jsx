@@ -17,7 +17,7 @@ export default function LeadPainel() {
 }
 
 function Gaveta({ pedido, fechar }) {
-  const { produto, toast, mudou, versao } = useFaro();
+  const { produto, toast, mudou, versao, podeWhats, admin, equipe } = useFaro();
   const [lead, setLead] = useState(null);
   const [historico, setHistorico] = useState([]);
   const [scriptAtual, setScriptAtual] = useState({ id: pedido.scriptId || null, canal: pedido.canal || 'ligacao' });
@@ -31,7 +31,7 @@ function Gaveta({ pedido, fechar }) {
   useEffect(() => { carregar(); }, [carregar, versao]);
 
   useEffect(() => {
-    const f = e => { if (e.key === 'Escape' && !e.target.closest('input, textarea') && !document.querySelector('.modal')) fechar(); }; // com um modal aberto, o Esc fecha só o modal
+    const f = e => { if (e.key === 'Escape' && !e.defaultPrevented && !e.target.closest('input, textarea') && !document.querySelector('.modal')) fechar(); }; // com um modal aberto, o Esc fecha só o modal
     window.addEventListener('keydown', f);
     return () => window.removeEventListener('keydown', f);
   }, [fechar]);
@@ -50,11 +50,16 @@ function Gaveta({ pedido, fechar }) {
             {[lead.responsavel, nicho, [lead.bairro, lead.cidade, lead.uf].filter(Boolean).join(', ')].filter(Boolean).join('  /  ')}
           </p>
           <div style={{ marginTop: 14 }}><Termometro score={lead.score} /></div>
+          {admin && lead.dono && equipe.length > 1 && (
+            <span className="etq" style={{ marginTop: 10, display: 'inline-block' }}>Na fila de {equipe.find(p => p.id === lead.dono)?.nome || 'outra pessoa'}</span>
+          )}
           <div className="contatos">
             {lead.telefone ? (
               <>
                 <a className="btn ligar" href={linkLigar(lead.telefone)}><Icone nome="telefone" /> {formatarTelefone(lead.telefone)}</a>
-                <a className="btn whats" href={linkWhatsApp(lead.telefone)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" /> WhatsApp</a>
+                {podeWhats(lead)
+                  ? <a className="btn whats" href={linkWhatsApp(lead.telefone)} target="_blank" rel="noopener noreferrer"><Icone nome="whats" /> WhatsApp</a>
+                  : <span className="btn whats-travado" title="O WhatsApp libera depois que o cliente atender a sua ligação"><Icone nome="cadeado" /> WhatsApp depois da ligação</span>}
               </>
             ) : <span className="etq neg">Sem telefone: tente Instagram ou e-mail</span>}
             {lead.telefone2 && <a className="btn" href={linkLigar(lead.telefone2)}><Icone nome="telefone" /> {formatarTelefone(lead.telefone2)}</a>}
@@ -88,7 +93,7 @@ function Gaveta({ pedido, fechar }) {
           <Gravacoes lead={lead} />
 
           <PorQue lead={lead} />
-          <Inteligencia lead={lead} aoMudar={carregar} />
+          <Inteligencia lead={lead} aoMudar={carregar} whats={podeWhats(lead)} />
           <Ficha lead={lead} aoSalvar={(l) => { setLead(l); mudou(); }} />
           <Historico lead={lead} historico={historico} aoAnotar={carregar} />
         </div>
@@ -124,7 +129,7 @@ function PorQue({ lead }) {
   );
 }
 
-function Inteligencia({ lead, aoMudar }) {
+function Inteligencia({ lead, aoMudar, whats }) {
   const { toast } = useFaro();
   const [aberto, setAberto] = useState(null);
   const [entrada, setEntrada] = useState('');
@@ -142,7 +147,7 @@ function Inteligencia({ lead, aoMudar }) {
         <h3>Assistente de vendas</h3>
         <div className="abas">
           <button aria-pressed={aberto === 'dossie'} onClick={() => { setAberto('dossie'); setSaida(null); }}>Dossiê antes de ligar</button>
-          <button aria-pressed={aberto === 'resposta'} onClick={() => { setAberto('resposta'); setSaida(null); }}>Ele respondeu…</button>
+          {whats && <button aria-pressed={aberto === 'resposta'} onClick={() => { setAberto('resposta'); setSaida(null); }}>Ele respondeu…</button>}
         </div>
       </div>
       <div className="bloco-corpo">

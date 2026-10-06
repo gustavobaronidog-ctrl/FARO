@@ -80,6 +80,7 @@ declare pid uuid := (select id from produtos where slug='tem-encaixe');
         l leads;
 begin
   assert (select count(*) from leads) = 6, 'admin deveria ver os leads';
+  assert reservar_leads(pid, 40) = 4, 'admin reserva os 4 novos com telefone, sem o fechado';
   assert (select count(*) from fila_hoje(pid)) = 4, 'fila: 4 novos com telefone, sem o fechado';
   assert (select (lead->>'nome') from fila_hoje(pid) order by ordem, (lead->>'score')::int desc limit 1) is not null;
 

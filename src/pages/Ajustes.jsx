@@ -9,6 +9,14 @@ const slug = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
 export default function Ajustes() {
   const { perfil, produto } = useFaro();
   const admin = perfil?.papel === 'admin';
+  if (!admin) {
+    return (
+      <>
+        <div className="topo"><div><h1>Seu perfil</h1><p>Seu nome, sua meta do dia e a saída do Faro.</p></div></div>
+        <div style={{ maxWidth: 620 }}><MeuPerfil /></div>
+      </>
+    );
+  }
   return (
     <>
       <div className="topo"><div><h1>Ajustes</h1><p>Produtos, cliente ideal de cada um, equipe e limites dos robôs.</p></div></div>
@@ -16,7 +24,7 @@ export default function Ajustes() {
         <a className="btn" href="#/cacada"><Icone nome="cacada" tam={16} /> Caçada</a>
         <a className="btn" href="#/aprendizado"><Icone nome="aprendizado" tam={16} /> Aprendizado</a>
       </nav>
-      <div className="duas-col" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
+      <div className="duas-col ajustes-grid">
         <div>{admin ? <ProdutoEditor key={produto?.id || 'novo'} /> : <p className="apagado">Só o administrador edita os produtos.</p>}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <MeuPerfil />
@@ -131,27 +139,82 @@ function MeuPerfil() {
   );
 }
 
+const WHATS = [
+  { chave: 'apos_ligacao', nome: 'Depois que o cliente atender' },
+  { chave: 'nunca', nome: 'Travado (só ligação)' },
+  { chave: 'sempre', nome: 'Liberado sempre' },
+];
+
 function Equipe() {
+  const { produto, perfil, mudou } = useFaro();
   const [pessoas, setPessoas] = useState([]);
+  const [nums, setNums] = useState({});
   const [rodar] = useAcao();
-  const carregar = () => dados.listarEquipe().then(setPessoas).catch(() => {});
-  useEffect(() => { carregar(); }, []);
+  const carregar = () => {
+    dados.listarEquipe().then(setPessoas).catch(() => {});
+    if (produto) dados.equipeResumo(produto.id).then(setNums);
+  };
+  useEffect(() => { carregar(); }, [produto?.id]); // eslint-disable-line
+  const mudar = (p, patch, msg) => rodar(async () => {
+    await dados.atualizarPerfil(p.id, patch);
+    // tirou o acesso: os leads que a pessoa ainda não trabalhou voltam para o monte
+    if (patch.papel === 'pendente') await dados.liberarLeads(p.id).catch(() => {});
+  }, msg).then(() => { carregar(); mudou(); });
+  const devolver = (p) => {
+    if (!window.confirm(`Devolver para o monte os leads que ${p.nome} ainda não ligou?`)) return;
+    rodar(() => dados.liberarLeads(p.id), n => `${n} leads voltaram para o monte`).then(() => { carregar(); mudou(); });
+  };
+  const link = typeof window !== 'undefined' ? window.location.origin : '';
   return (
     <div className="cartao-simples">
       <h3>Equipe</h3>
-      <p className="pequeno apagado" style={{ marginTop: 4 }}>Quem se cadastrar no link do Faro fica "pendente" e não vê nada até você liberar aqui.</p>
-      <div className="lista-simples" style={{ marginTop: 10 }}>
-        {pessoas.map(p => (
-          <div key={p.id} className="linha" style={{ justifyContent: 'space-between' }}>
-            <div><b>{p.nome}</b><div className="mini apagado">{p.email}</div></div>
-            <select className="entrada" style={{ width: 'auto' }} value={p.papel} aria-label={`Papel de ${p.nome}`}
-              onChange={e => rodar(() => dados.atualizarPerfil(p.id, { papel: e.target.value }), 'Equipe atualizada').then(carregar)}>
-              <option value="pendente">Pendente (sem acesso)</option>
-              <option value="vendedor">Vendedor</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-        ))}
+      <p className="pequeno apagado" style={{ marginTop: 4 }}>
+        Mande o link <b>{link.replace(/^https?:\/\//, '')}</b> para a pessoa criar a conta. Ela fica <b>pendente</b> até você liberar aqui.
+        O vendedor vê só a fila dele, o roteiro e o treino. Cada um recebe leads diferentes.
+      </p>
+      <div className="equipe">
+        {pessoas.map(p => {
+          const n = nums[p.id] || {};
+          const eu = p.id === perfil.id;
+          return (
+            <div key={p.id} className="membro">
+              <div className="linha" style={{ justifyContent: 'space-between' }}>
+                <div style={{ minWidth: 0 }}><b>{p.nome}{eu ? ' (você)' : ''}</b><div className="mini apagado">{p.email}</div></div>
+                <select className="entrada" style={{ width: 'auto' }} value={p.papel} disabled={eu} aria-label={`Acesso de ${p.nome}`}
+                  onChange={e => mudar(p, { papel: e.target.value, ...(e.target.value === 'admin' ? { whatsapp: 'sempre' } : {}) }, 'Equipe atualizada')}>
+                  <option value="pendente">Sem acesso</option>
+                  <option value="vendedor">Vendedor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              {p.papel === 'vendedor' && (
+                <>
+                  <div className="permissoes">
+                    <span className="permissao ligada"><Icone nome="telefone" tam={14} /> Ligação liberada</span>
+                    <label className="permissao">
+                      <Icone nome="whats" tam={14} /> WhatsApp:
+                      <select value={p.whatsapp || 'apos_ligacao'} aria-label={`WhatsApp de ${p.nome}`}
+                        onChange={e => mudar(p, { whatsapp: e.target.value }, 'Permissão de WhatsApp atualizada')}>
+                        {WHATS.map(w => <option key={w.chave} value={w.chave}>{w.nome}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="membro-nums">
+                    <div><b className="num">{n.na_fila ?? '–'}</b><span>na fila</span></div>
+                    <div><b className="num">{n.ligacoes_hoje ?? '–'}</b><span>ligações hoje</span></div>
+                    <div><b className="num">{n.atendeu_hoje ?? '–'}</b><span>atenderam</span></div>
+                    <div><b className="num">{n.positivos_hoje ?? '–'}</b><span>boas hoje</span></div>
+                    <div><b className="num">{n.nota_treino != null ? String(n.nota_treino).replace('.', ',') : '–'}</b><span>nota no treino</span></div>
+                  </div>
+                  <div className="linha" style={{ marginTop: 8 }}>
+                    <a className="btn pq fantasma" href="#/treino"><Icone nome="treino" tam={14} /> Ver treino</a>
+                    <button className="btn pq fantasma" onClick={() => devolver(p)} disabled={!n.na_fila}>Devolver leads não ligados</button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

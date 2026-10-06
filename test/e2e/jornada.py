@@ -201,12 +201,32 @@ with sync_playwright() as p:
     pg.evaluate("() => localStorage.clear()")
     entrar(pg, ADMIN[0], ADMIN[1]); pg.get_by_text(re.compile("Gustavo")).first.wait_for()
     ir(pg, "ajustes", "Ajustes")
-    pg.get_by_label(f"Papel de {VEND[2]}").select_option("vendedor"); print("    ", toast_ok(pg, "Equipe"))
+    pg.get_by_label(f"Acesso de {VEND[2]}").select_option("vendedor"); print("    ", toast_ok(pg, "Equipe"))
+    pg.get_by_label(f"WhatsApp de {VEND[2]}").wait_for()
     sair(pg)
     entrar(pg, VEND[0], VEND[1])
     pg.get_by_text(re.compile(r"(Bom dia|Boa tarde|Boa noite), Ana")).wait_for(timeout=15000)
     pg.locator(".lead-linha").first.wait_for()
-    passo("vendedora nova: bloqueada até o admin liberar; depois vê a fila")
+    menu = pg.locator(".trilho .nav-item").all_inner_texts()
+    assert [m.strip() for m in menu] == ["Hoje", "Treino", "Seu perfil"], f"menu da vendedora: {menu}"
+    assert pg.get_by_role("button", name="Lead").count() == 0, "vendedora não cadastra lead"
+    pg.goto(APP + "/#/radar"); pg.wait_for_timeout(800)
+    assert pg.locator("h1").first.inner_text() != "Radar", "vendedora não abre o Radar"
+    # a fila dela é separada: nenhum lead da fila da Ana está na fila do Gustavo
+    meus = pg.evaluate("""async () => { const k = Object.keys(localStorage).find(x => x.includes('auth-token'));
+      const t = JSON.parse(localStorage[k]).access_token;
+      const r = await fetch('http://127.0.0.1:54321/rest/v1/leads?select=id,dono', { headers: { apikey: 'sb_publishable_TESTElocal0000000000000000', Authorization: 'Bearer ' + t } });
+      return (await r.json()).map(x => x.dono); }""")
+    assert len(meus) > 0 and len(set(meus)) == 1, f"vendedora deveria ver só os leads dela: {set(meus)}"
+    # WhatsApp travado até o cliente atender
+    novo = pg.locator(".lead-linha", has=pg.locator(".whats-travado")).first
+    novo.click(); pg.locator(".gaveta").wait_for(); pg.wait_for_timeout(500)
+    assert pg.locator(".gaveta .whats-travado").count() >= 1, "WhatsApp deveria estar travado antes da ligação"
+    assert pg.get_by_role("button", name="Mandei WhatsApp").count() == 0
+    pg.locator(".gaveta .res", has_text="Interessado").first.click(); print("    ", toast_ok(pg, "Interessado"))
+    pg.locator(".gaveta a.btn.whats").first.wait_for(timeout=10000)
+    passo("vendedora: vê só Hoje/Treino, fila separada, WhatsApp libera depois que o cliente atende")
+    pg.get_by_label("Fechar").click()
     sair(pg)
 
     # 14. celular

@@ -56,19 +56,23 @@ export default function App() {
   return <FaroProvider perfil={perfil}><Casca /></FaroProvider>;
 }
 
+// O vendedor vê só o que precisa para ligar: a fila, o treino e o próprio perfil
+const DO_VENDEDOR = ['hoje', 'treino', 'ajustes'];
+
 function Casca() {
   const rota = useRota();
-  const { perfil } = useFaro();
-  const pagina = PAGINAS.find(p => p.rota === rota) || PAGINAS[0];
+  const { perfil, admin } = useFaro();
+  const visiveis = admin ? PAGINAS : PAGINAS.filter(p => DO_VENDEDOR.includes(p.rota));
+  const pagina = visiveis.find(p => p.rota === rota) || visiveis[0];
   const Pagina = pagina.C;
   useEffect(() => { document.title = `${pagina.nome} | Faro`; }, [pagina]);
   return (
     <div className="casca">
       <nav className="trilho" aria-label="Menu">
         <a className="marca" href="#/hoje" style={{ textDecoration: 'none' }}><Marca /><span className="marca-nome">Faro</span></a>
-        {PAGINAS.map(p => (
+        {visiveis.map(p => (
           <a key={p.rota} className="nav-item" href={`#/${p.rota}`} aria-current={p.rota === pagina.rota ? 'page' : undefined}>
-            <Icone nome={p.icone} /> {p.nome}
+            <Icone nome={p.icone} /> {!admin && p.rota === 'ajustes' ? 'Seu perfil' : p.nome}
           </a>
         ))}
         <div className="trilho-pe">
@@ -77,10 +81,10 @@ function Casca() {
       </nav>
       <main className="conteudo"><Pagina /></main>
       <nav className="barra-baixo" aria-label="Menu">
-        {PAGINAS.filter(p => !['ajustes', 'aprendizado', 'cacada'].includes(p.rota)).map(p => (
+        {visiveis.filter(p => !['ajustes', 'aprendizado', 'cacada'].includes(p.rota)).map(p => (
           <a key={p.rota} href={`#/${p.rota}`} aria-current={p.rota === pagina.rota ? 'page' : undefined}><Icone nome={p.icone} tam={20} />{p.nome}</a>
         ))}
-        <a href="#/ajustes" aria-current={['ajustes', 'aprendizado', 'cacada'].includes(pagina.rota) ? 'page' : undefined}><Icone nome="ajustes" tam={20} />Mais</a>
+        <a href="#/ajustes" aria-current={['ajustes', 'aprendizado', 'cacada'].includes(pagina.rota) ? 'page' : undefined}><Icone nome="ajustes" tam={20} />{admin ? 'Mais' : 'Perfil'}</a>
       </nav>
       <LeadPainel />
     </div>

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as dados from './lib/dados.js';
+import { whatsappLiberado } from './lib/util.js';
 
 const Ctx = createContext(null);
 export const useFaro = () => useContext(Ctx);
@@ -41,12 +42,16 @@ export function FaroProvider({ perfil, children }) {
   }, [carregarScripts, carregarPesos, toast]);
 
   const mudou = useCallback(() => setVersao(v => v + 1), []);
+  const admin = perfil?.papel === 'admin';
+  const podeWhats = useCallback((lead) => whatsappLiberado(perfil, lead), [perfil]);
+  const [equipe, setEquipe] = useState([]);
+  useEffect(() => { if (admin) dados.listarEquipe().then(setEquipe).catch(() => {}); }, [admin, versao]);
 
   const valor = useMemo(() => ({
     perfil, produtos, produto, produtoId, setProdutoId, carregarProdutos,
     pesos, carregarPesos, scripts, carregarScripts,
-    toast, leadAberto, abrirLead: setLeadAberto, versao, mudou,
-  }), [perfil, produtos, produto, produtoId, carregarProdutos, pesos, carregarPesos, scripts, carregarScripts, toast, leadAberto, versao, mudou]);
+    toast, leadAberto, abrirLead: setLeadAberto, versao, mudou, admin, podeWhats, equipe,
+  }), [perfil, produtos, produto, produtoId, carregarProdutos, pesos, carregarPesos, scripts, carregarScripts, toast, leadAberto, versao, mudou, admin, podeWhats, equipe]);
 
   return (
     <Ctx.Provider value={valor}>

@@ -5,15 +5,16 @@ import { useFaro } from '../Contexto.jsx';
 
 // Botões de resultado do contato. Teclas 1–9 e 0 funcionam quando "atalhos" está ligado.
 export default function Registrar({ lead, canal: canalInicial = 'ligacao', scriptId, atalhos = false, aoRegistrar }) {
-  const { toast, mudou } = useFaro();
-  const [canal, setCanal] = useState(canalInicial);
+  const { toast, mudou, podeWhats } = useFaro();
+  const whats = podeWhats(lead);
+  const [canal, setCanal] = useState(whats ? canalInicial : 'ligacao');
   const [pendente, setPendente] = useState(null); // resultado que pede data ou motivo
   const [data, setData] = useState(dataLocal(1, 10));
   const [motivo, setMotivo] = useState('');
   const [nota, setNota] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => { setCanal(canalInicial); setPendente(null); setNota(''); }, [lead.id, canalInicial]);
+  useEffect(() => { setCanal(whats ? canalInicial : 'ligacao'); setPendente(null); setNota(''); }, [lead.id, canalInicial]); // eslint-disable-line
 
   const salvar = async (res, extra = {}) => {
     setSalvando(true);
@@ -58,7 +59,7 @@ export default function Registrar({ lead, canal: canalInicial = 'ligacao', scrip
       <div className="linha" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
         <div className="abas" role="group" aria-label="Canal do contato">
           <button aria-pressed={canal === 'ligacao'} onClick={() => setCanal('ligacao')}>Liguei</button>
-          <button aria-pressed={canal === 'whatsapp'} onClick={() => setCanal('whatsapp')}>Mandei WhatsApp</button>
+          {whats && <button aria-pressed={canal === 'whatsapp'} onClick={() => setCanal('whatsapp')}>Mandei WhatsApp</button>}
           <button aria-pressed={canal === 'visita'} onClick={() => setCanal('visita')}>Visitei</button>
         </div>
         {atalhos && <span className="mini apagado esconde-cel">Atalhos: teclas 1 a 0</span>}
